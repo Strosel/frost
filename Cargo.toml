@@ -1,0 +1,13 @@
+[package]
+name = "frost"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["native"]
+native = []
+pure = ["iced_pure"]
+
+[dependencies]
+iced_native = "0.5"
+iced_pure = { version = "0.2", optional = true }

@@ -1,0 +1,17 @@
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - v[0-9]+.*
+
+jobs:
+  cargo-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install rustup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo check --features pure
