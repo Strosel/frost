@@ -4,10 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["native"]
-native = []
-pure = ["iced_pure"]
+default = []
 
 [dependencies]
-iced_native = "0.5"
-iced_pure = { version = "0.2", optional = true }
+iced_native = "0.7"

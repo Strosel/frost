@@ -1,9 +1,7 @@
-#[cfg(feature = "native")]
 #[allow(non_snake_case)]
-///Widgets for `iced_native`
-pub mod native;
+///clickable, unstyled containers
+pub mod clickable;
 
-#[cfg(feature = "pure")]
 #[allow(non_snake_case)]
-///Widgets for `iced_pure`
-pub mod pure;
+///text widgets with default sizes
+pub mod text;

@@ -1,16 +1,18 @@
-use {
-    iced_native::{alignment, Length, Padding, Renderer},
-    iced_pure::{
-        widget::{
-            button::{Button, Style, StyleSheet},
-            container::{self, Container},
-        },
-        Element,
+use iced_native::{
+    alignment,
+    widget::{
+        button::{self, Appearance, Button},
+        container::{self, Container},
     },
+    Element, Length, Padding, Renderer,
 };
 
 ///A clickable `Container`
-pub struct Clickable<'a, M, R> {
+pub struct Clickable<'a, M, R>
+where
+    R: Renderer,
+    R::Theme: container::StyleSheet,
+{
     content: Container<'a, M, R>,
     msg: Option<M>,
     height: Length,
@@ -21,6 +23,7 @@ impl<'a, M, R> Clickable<'a, M, R>
 where
     M: 'a + Clone,
     R: Renderer,
+    R::Theme: container::StyleSheet,
 {
     /// Creates an empty `Clickable`.
     pub fn new<T>(content: T) -> Self
@@ -88,7 +91,10 @@ where
     }
 
     /// Sets the style of the `Clickable`.
-    pub fn style(mut self, style_sheet: impl Into<Box<dyn container::StyleSheet + 'a>>) -> Self {
+    pub fn style(
+        mut self,
+        style_sheet: impl Into<<R::Theme as container::StyleSheet>::Style>,
+    ) -> Self {
         self.content = self.content.style(style_sheet);
         self
     }
@@ -98,12 +104,13 @@ impl<'a, M, R> From<Clickable<'a, M, R>> for Element<'a, M, R>
 where
     M: 'a + Clone,
     R: 'a + Renderer,
+    R::Theme: container::StyleSheet + button::StyleSheet<Style = iced_native::theme::Button>,
 {
     fn from(c: Clickable<'a, M, R>) -> Element<'a, M, R> {
         let b = Button::new(c.content)
             .height(c.height)
             .width(c.width)
-            .style(ClickableStyle);
+            .style(iced_native::theme::Button::Custom(Box::new(ClickableStyle)));
         match c.msg {
             Some(m) => b.on_press(m),
             None => b,
@@ -114,20 +121,23 @@ where
 
 /// A `StyleSheet` to make buttons invisible
 struct ClickableStyle;
-impl StyleSheet for ClickableStyle {
-    fn active(&self) -> Style {
-        Style::default()
+
+impl button::StyleSheet for ClickableStyle {
+    type Style = iced_native::Theme;
+
+    fn active(&self, _style: &Self::Style) -> Appearance {
+        Appearance::default()
     }
 
-    fn hovered(&self) -> Style {
-        self.active()
+    fn hovered(&self, style: &Self::Style) -> Appearance {
+        self.active(style)
     }
 
-    fn pressed(&self) -> Style {
-        self.active()
+    fn pressed(&self, style: &Self::Style) -> Appearance {
+        self.active(style)
     }
 
-    fn disabled(&self) -> Style {
-        self.active()
+    fn disabled(&self, style: &Self::Style) -> Appearance {
+        self.active(style)
     }
 }
