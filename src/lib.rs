@@ -1,5 +1,5 @@
 #[allow(non_snake_case)]
-///clickable, unstyled containers
+///button with container properties
 pub mod clickable;
 
 #[allow(non_snake_case)]
