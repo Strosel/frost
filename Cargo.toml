@@ -7,4 +7,4 @@ edition = "2021"
 default = []
 
 [dependencies]
-iced_native = "0.8"
+iced = {version = "0.10", features=["advanced"]}

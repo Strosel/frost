@@ -1,28 +1,36 @@
-use iced_native::{
+use iced::{
+    advanced::{
+        layout::{self, Layout},
+        renderer,
+        widget::{
+            self,
+            tree::{self, Tree},
+            Operation,
+        },
+        Clipboard, Shell, Widget,
+    },
     alignment,
     event::{self, Event},
-    layout, mouse, overlay, renderer,
+    mouse, overlay,
     widget::{
-        button::{self, Appearance, State, StyleSheet},
+        button::{self, State, StyleSheet},
         container,
-        tree::{self, Tree},
-        Operation,
     },
-    Background, Clipboard, Color, Element, Layout, Length, Padding, Point, Rectangle, Shell,
-    Widget,
+    Element, Length, Padding, Rectangle,
 };
 
 ///A button with container properties
 pub struct Clickable<'a, Message, Renderer>
 where
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: Option<Id>,
     padding: Padding,
     width: Length,
     height: Length,
-    max_width: u32,
-    max_height: u32,
+    max_width: f32,
+    max_height: f32,
     horizontal_alignment: alignment::Horizontal,
     vertical_alignment: alignment::Vertical,
     style: <Renderer::Theme as StyleSheet>::Style,
@@ -32,7 +40,7 @@ where
 
 impl<'a, Message, Renderer> Clickable<'a, Message, Renderer>
 where
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     /// Creates an empty [`Clickable`].
@@ -41,17 +49,24 @@ where
         T: Into<Element<'a, Message, Renderer>>,
     {
         Clickable {
+            id: None,
             padding: Padding::ZERO,
             width: Length::Shrink,
             height: Length::Shrink,
-            max_width: u32::MAX,
-            max_height: u32::MAX,
+            max_width: f32::MAX,
+            max_height: f32::MAX,
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
             style: Default::default(),
             content: content.into(),
             on_press: None,
         }
+    }
+
+    /// Sets the [`Id`] of the [`Clickable`].
+    pub fn id(mut self, id: Id) -> Self {
+        self.id = Some(id);
+        self
     }
 
     /// Sets the [`Padding`] of the [`Clickable`].
@@ -73,13 +88,13 @@ where
     }
 
     /// Sets the maximum width of the [`Clickable`].
-    pub fn max_width(mut self, max_width: u32) -> Self {
+    pub fn max_width(mut self, max_width: f32) -> Self {
         self.max_width = max_width;
         self
     }
 
     /// Sets the maximum height of the [`Clickable`] in pixels.
-    pub fn max_height(mut self, max_height: u32) -> Self {
+    pub fn max_height(mut self, max_height: f32) -> Self {
         self.max_height = max_height;
         self
     }
@@ -126,7 +141,7 @@ where
 impl<'a, Message, Renderer> Widget<Message, Renderer> for Clickable<'a, Message, Renderer>
 where
     Message: Clone + 'a,
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     fn tag(&self) -> tree::Tag {
@@ -175,14 +190,18 @@ where
         renderer: &Renderer,
         operation: &mut dyn Operation<Message>,
     ) {
-        operation.container(None, &mut |operation| {
-            self.content.as_widget().operate(
-                &mut tree.children[0],
-                layout.children().next().unwrap(),
-                renderer,
-                operation,
-            );
-        });
+        operation.container(
+            self.id.as_ref().map(|id| &id.0),
+            layout.bounds(),
+            &mut |operation| {
+                self.content.as_widget().operate(
+                    &mut tree.children[0],
+                    layout.children().next().unwrap(),
+                    renderer,
+                    operation,
+                );
+            },
+        );
     }
 
     fn on_event(
@@ -190,42 +209,39 @@ where
         tree: &mut Tree,
         event: Event,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor: mouse::Cursor,
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         if let event::Status::Captured = self.content.as_widget_mut().on_event(
             &mut tree.children[0],
             event.clone(),
             layout.children().next().unwrap(),
-            cursor_position,
+            cursor,
             renderer,
             clipboard,
             shell,
+            viewport,
         ) {
             return event::Status::Captured;
         }
 
-        button::update(
-            event,
-            layout,
-            cursor_position,
-            shell,
-            &self.on_press,
-            || tree.state.downcast_mut::<State>(),
-        )
+        button::update(event, layout, cursor, shell, &self.on_press, || {
+            tree.state.downcast_mut::<State>()
+        })
     }
 
     fn mouse_interaction(
         &self,
         _tree: &Tree,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor: mouse::Cursor,
         _viewport: &Rectangle,
         _renderer: &Renderer,
     ) -> mouse::Interaction {
-        button::mouse_interaction(layout, cursor_position, self.on_press.is_some())
+        button::mouse_interaction(layout, cursor, self.on_press.is_some())
     }
 
     fn draw(
@@ -233,33 +249,34 @@ where
         tree: &Tree,
         renderer: &mut Renderer,
         theme: &Renderer::Theme,
-        _renderer_style: &renderer::Style,
+        _style: &renderer::Style,
         layout: Layout<'_>,
-        cursor_position: Point,
-        viewport: &Rectangle,
+        cursor: mouse::Cursor,
+        _viewport: &Rectangle,
     ) {
-        let is_mouse_over = layout.bounds().contains(cursor_position);
+        let bounds = layout.bounds();
+        let content_layout = layout.children().next().unwrap();
 
-        let style = if self.on_press.is_none() {
-            theme.disabled(&self.style)
-        } else if is_mouse_over {
-            theme.hovered(&self.style)
-        } else {
-            theme.active(&self.style)
-        };
-
-        draw_background(renderer, &style, layout.bounds());
+        let styling = button::draw(
+            renderer,
+            bounds,
+            cursor,
+            self.on_press.is_some(),
+            theme,
+            &self.style,
+            || tree.state.downcast_ref::<State>(),
+        );
 
         self.content.as_widget().draw(
             &tree.children[0],
             renderer,
             theme,
             &renderer::Style {
-                text_color: style.text_color,
+                text_color: styling.text_color,
             },
-            layout.children().next().unwrap(),
-            cursor_position,
-            viewport,
+            content_layout,
+            cursor,
+            &bounds,
         );
     }
 
@@ -281,7 +298,7 @@ impl<'a, Message, Renderer> From<Clickable<'a, Message, Renderer>>
     for Element<'a, Message, Renderer>
 where
     Message: Clone + 'a,
-    Renderer: 'a + iced_native::Renderer,
+    Renderer: 'a + renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     fn from(column: Clickable<'a, Message, Renderer>) -> Element<'a, Message, Renderer> {
@@ -289,21 +306,26 @@ where
     }
 }
 
-fn draw_background<Renderer>(renderer: &mut Renderer, appearance: &Appearance, bounds: Rectangle)
-where
-    Renderer: iced_native::Renderer,
-{
-    if appearance.background.is_some() || appearance.border_width > 0.0 {
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds,
-                border_radius: appearance.border_radius.into(),
-                border_width: appearance.border_width,
-                border_color: appearance.border_color,
-            },
-            appearance
-                .background
-                .unwrap_or(Background::Color(Color::TRANSPARENT)),
-        );
+/// The identifier of a [`Clickable`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Id(widget::Id);
+
+impl Id {
+    /// Creates a custom [`Id`].
+    pub fn new(id: impl Into<std::borrow::Cow<'static, str>>) -> Self {
+        Self(widget::Id::new(id))
+    }
+
+    /// Creates a unique [`Id`].
+    ///
+    /// This function produces a different [`Id`] every time it is called.
+    pub fn unique() -> Self {
+        Self(widget::Id::unique())
+    }
+}
+
+impl From<Id> for widget::Id {
+    fn from(id: Id) -> Self {
+        id.0
     }
 }

@@ -1,4 +1,4 @@
-use iced_native::{
+use iced::{
     widget::{Column, Row},
     Alignment, Element, Length,
 };
@@ -81,7 +81,7 @@ impl<'a, Message, Renderer> Wrap<'a, Message, Renderer> {
 impl<'a, Message, Renderer> From<Wrap<'a, Message, Renderer>> for Element<'a, Message, Renderer>
 where
     Message: 'a,
-    Renderer: iced_native::Renderer + 'a,
+    Renderer: iced::advanced::renderer::Renderer + 'a,
 {
     fn from(wrap: Wrap<'a, Message, Renderer>) -> Self {
         //defining the macro here allows it to access wrap without passing it
