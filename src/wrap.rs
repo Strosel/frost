@@ -14,16 +14,16 @@ pub enum Direction {
 }
 
 ///A container that distributes its contents in both directions by wrapping
-pub struct Wrap<'a, Message, Renderer> {
+pub struct Wrap<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer> {
     direction: Direction,
     width: Length,
     height: Length,
     spacing: u16,
     padding: u16,
-    children: Vec<Element<'a, Message, Renderer>>,
+    children: Vec<Element<'a, Message, Theme, Renderer>>,
 }
 
-impl<'a, Message, Renderer> Wrap<'a, Message, Renderer> {
+impl<'a, Message, Theme, Renderer> Wrap<'a, Message, Theme, Renderer> {
     ///Creates an empty [`Wrap`]
     pub fn new(direction: Direction) -> Self {
         Self::with_children(direction, Vec::new())
@@ -32,7 +32,7 @@ impl<'a, Message, Renderer> Wrap<'a, Message, Renderer> {
     ///Creates a [`Wrap`] with the given elements
     pub fn with_children(
         direction: Direction,
-        children: Vec<Element<'a, Message, Renderer>>,
+        children: Vec<Element<'a, Message, Theme, Renderer>>,
     ) -> Self {
         Self {
             direction,
@@ -71,19 +71,21 @@ impl<'a, Message, Renderer> Wrap<'a, Message, Renderer> {
     ///Adds an [`Element`] to the [`Wrap`]
     pub fn push<E>(mut self, child: E) -> Self
     where
-        E: Into<Element<'a, Message, Renderer>>,
+        E: Into<Element<'a, Message, Theme, Renderer>>,
     {
         self.children.push(child.into());
         self
     }
 }
 
-impl<'a, Message, Renderer> From<Wrap<'a, Message, Renderer>> for Element<'a, Message, Renderer>
+impl<'a, Message, Theme, Renderer> From<Wrap<'a, Message, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
-    Renderer: iced::advanced::renderer::Renderer + 'a,
+    Theme: 'a,
+    Renderer: iced::advanced::Renderer + 'a,
 {
-    fn from(wrap: Wrap<'a, Message, Renderer>) -> Self {
+    fn from(wrap: Wrap<'a, Message, Theme, Renderer>) -> Self {
         //defining the macro here allows it to access wrap without passing it
         macro_rules! resolve {
             //Double brackets to allow a more complex macro

@@ -13,17 +13,17 @@ use iced::{
     event::{self, Event},
     mouse, overlay,
     widget::{
-        button::{self, State, StyleSheet},
+        button::{self, State},
         container,
     },
-    Element, Length, Padding, Rectangle,
+    Element, Length, Padding, Rectangle, Size, Vector,
 };
 
 ///A button with container properties
-pub struct Clickable<'a, Message, Renderer>
+pub struct Clickable<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer>
 where
+    Theme: button::StyleSheet,
     Renderer: renderer::Renderer,
-    Renderer::Theme: StyleSheet,
 {
     id: Option<Id>,
     padding: Padding,
@@ -33,20 +33,20 @@ where
     max_height: f32,
     horizontal_alignment: alignment::Horizontal,
     vertical_alignment: alignment::Vertical,
-    style: <Renderer::Theme as StyleSheet>::Style,
-    content: Element<'a, Message, Renderer>,
+    style: <Theme as button::StyleSheet>::Style,
+    content: Element<'a, Message, Theme, Renderer>,
     on_press: Option<Message>,
 }
 
-impl<'a, Message, Renderer> Clickable<'a, Message, Renderer>
+impl<'a, Message, Theme, Renderer> Clickable<'a, Message, Theme, Renderer>
 where
+    Theme: button::StyleSheet,
     Renderer: renderer::Renderer,
-    Renderer::Theme: StyleSheet,
 {
     /// Creates an empty [`Clickable`].
     pub fn new<T>(content: T) -> Self
     where
-        T: Into<Element<'a, Message, Renderer>>,
+        T: Into<Element<'a, Message, Theme, Renderer>>,
     {
         Clickable {
             id: None,
@@ -124,7 +124,7 @@ where
     }
 
     /// Sets the style of the [`Clickable`].
-    pub fn style(mut self, style: impl Into<<Renderer::Theme as StyleSheet>::Style>) -> Self {
+    pub fn style(mut self, style: impl Into<<Theme as button::StyleSheet>::Style>) -> Self {
         self.style = style.into();
         self
     }
@@ -138,11 +138,12 @@ where
     }
 }
 
-impl<'a, Message, Renderer> Widget<Message, Renderer> for Clickable<'a, Message, Renderer>
+impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for Clickable<'a, Message, Theme, Renderer>
 where
     Message: Clone + 'a,
+    Theme: button::StyleSheet,
     Renderer: renderer::Renderer,
-    Renderer::Theme: StyleSheet,
 {
     fn tag(&self) -> tree::Tag {
         tree::Tag::of::<State>()
@@ -160,17 +161,20 @@ where
         tree.diff_children(std::slice::from_ref(&self.content))
     }
 
-    fn width(&self) -> Length {
-        self.width
+    fn size(&self) -> Size<Length> {
+        Size {
+            width: self.width,
+            height: self.height,
+        }
     }
 
-    fn height(&self) -> Length {
-        self.height
-    }
-
-    fn layout(&self, renderer: &Renderer, limits: &layout::Limits) -> layout::Node {
+    fn layout(
+        &self,
+        tree: &mut Tree,
+        renderer: &Renderer,
+        limits: &layout::Limits,
+    ) -> layout::Node {
         container::layout(
-            renderer,
             limits,
             self.width,
             self.height,
@@ -179,7 +183,7 @@ where
             self.padding,
             self.horizontal_alignment,
             self.vertical_alignment,
-            |renderer, limits| self.content.as_widget().layout(renderer, limits),
+            |limits| self.content.as_widget().layout(tree, renderer, limits),
         )
     }
 
@@ -248,7 +252,7 @@ where
         &self,
         tree: &Tree,
         renderer: &mut Renderer,
-        theme: &Renderer::Theme,
+        theme: &Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
@@ -285,23 +289,27 @@ where
         tree: &'b mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-    ) -> Option<overlay::Element<'b, Message, Renderer>> {
+        translation: Vector,
+    ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
         self.content.as_widget_mut().overlay(
             &mut tree.children[0],
             layout.children().next().unwrap(),
             renderer,
+            translation,
         )
     }
 }
 
-impl<'a, Message, Renderer> From<Clickable<'a, Message, Renderer>>
-    for Element<'a, Message, Renderer>
+impl<'a, Message, Theme, Renderer> From<Clickable<'a, Message, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
 where
     Message: Clone + 'a,
+    Theme: 'a + button::StyleSheet,
     Renderer: 'a + renderer::Renderer,
-    Renderer::Theme: StyleSheet,
 {
-    fn from(column: Clickable<'a, Message, Renderer>) -> Element<'a, Message, Renderer> {
+    fn from(
+        column: Clickable<'a, Message, Theme, Renderer>,
+    ) -> Element<'a, Message, Theme, Renderer> {
         Element::new(column)
     }
 }

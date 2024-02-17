@@ -22,11 +22,11 @@ use {
 
 #[allow(clippy::new_ret_no_self)]
 impl<const SIZE: u16> Text<SIZE> {
-    pub fn new<'a, T, R>(text: T) -> widget::Text<'a, R>
+    pub fn new<'a, Text, Theme, Renderer>(text: Text) -> widget::Text<'a, Theme, Renderer>
     where
-        T: Into<Cow<'a, str>>,
-        R: advanced::text::Renderer,
-        R::Theme: widget::text::StyleSheet,
+        Text: Into<Cow<'a, str>>,
+        Theme: widget::text::StyleSheet,
+        Renderer: advanced::text::Renderer,
     {
         widget::Text::new(text).size(SIZE)
     }
